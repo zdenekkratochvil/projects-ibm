@@ -1,0 +1,74 @@
+1) Start aplikace (1. Objekt)
+	(fix-width, dynamic-height)
+	start pattern: CSASShell - Start Application
+	start uniqueness: Unique
+	end pattern: nic - nema dobu trvani
+	lifetime-end: (posledni CCID logline)
+	
+2) Load (CSASShell || RIOWidget) App contextu (Appcontext lifetime)
+	(dynamic-width, dynamic-height)
+	start pattern: org.springextensions.actionscript.context.support.XMLApplicationContext - Loading object definitions
+	start uniqueness: Non-Unique
+	end pattern: org.springextensions.actionscript.ioc.factory.support.DefaultListableObjectFactory - Wiring
+	end uniqueness: Non-Unique
+	lifetime-end: (posledni CCID logline) || lifetime-end widgetu (viz. bod 4.)
+	
+3) Set View (View lifetime)
+	(dynamic-width, dynamic-height)
+	start pattern: Executing command: cz.csas.client.components.ccfw.command.local::SetViewCommand as reaction to event:
+	start uniqueness: Non-Unique
+	end pattern: cz.csas.client.components.ccfw.command.local.SetViewCommand - View set to display hierarchy
+	end uniqueness: Non-Unique
+	lifetime-end: (posledni CCID logline) || (lifetime-end widgetu) || (dalsi volani SetView)
+	
+4) Load widget (Widget lifetime)
+	(fix-width, dynamic-height)
+	start pattern: com.ibm.rio.module.RIOModule - Adding widget {{%s}}
+	start uniqueness: Non-Unique
+	end pattern: nic - nema dobu trvani
+	end uniqueness: Non-Unique
+	lifetime-end: (posledni CCID logline) || (com.ibm.rio.manager.RIOWidgetManager - Widget: {{%s}} removed from display hierarchy)
+
+5) Execute Command
+    (fix-width, fix-height)
+	start pattern: Executing command:
+	start uniqueness: Non-Unique
+	end pattern: nic - nema dobu trvani
+	end uniqueness: Non-Unique
+	lifetime-end: ihned
+
+	
+drop table if exists `log_parser`.`logline`;
+drop table if exists `log_parser`.`transition`;
+drop table if exists `log_parser`.`view`;
+
+CREATE TABLE `log_parser`.`logline` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `logText` longtext,
+  `logTime` date DEFAULT NULL,
+  `clientConnectionId` varchar(45) DEFAULT NULL,
+  `transitionId` int(11) DEFAULT NULL,
+  `viewId` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `log_parser`.`transition` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `type` varchar(45) DEFAULT NULL,
+  `startDate` date DEFAULT NULL,
+  `duration` int(11) DEFAULT NULL,
+  `transitionId` int(11) DEFAULT NULL,
+  `viewId` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `log_parser`.`view` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `type` varchar(45) DEFAULT NULL,
+  `startDate` date DEFAULT NULL,
+  `duration` int(11) DEFAULT NULL,
+  `transitionId` int(11) DEFAULT NULL,
+  `viewId` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+

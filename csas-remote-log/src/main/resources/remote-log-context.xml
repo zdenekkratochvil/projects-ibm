@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+		"
+	>
+
+		<!-- APPLICATION BEANS -->
+		
+	<bean id="logManager" class="com.ibm.rio.log.remote.run.LogManager">
+		<property name="remoteLogParser" ref="remoteLogFileParser" />
+		<property name="modelParser" ref="clientConnectionModelParser" />
+		<property name="logLineDAO" ref="logLineDAO" />
+	</bean>
+	
+	<bean id="persistenceManager" class="com.ibm.rio.log.remote.run.PersistenceManager">
+		<property name="logLineDAO" ref="logLineDAO" />
+		<property name="perfAspect" ref="perfAOP" />
+	</bean>
+	
+	 	<!-- LOG PARSERS -->
+	 	
+	<bean id="remoteLogFileParser" class="com.ibm.rio.log.remote.parsers.RemoteLogFileParser">
+		<property name="logLineParser" ref="logLineParser" />
+		<property name="entityBuilders">
+			<list value-type="com.ibm.rio.log.remote.builders.IEntityBuilder">
+				<ref bean="shellViewBuilder" />
+				<ref bean="widgetViewBuilder" />
+				<ref bean="loadContextTransitionBuilder" />
+				<ref bean="setViewTransitionBuilder" />
+				<ref bean="commandPersistenceBuilder" />
+				<ref bean="defaultPersistenceBuilder" />
+			</list>
+		</property>
+		<property name="persistenceManager" ref="persistenceManager" />
+	</bean>
+	
+	<bean id="logLineParser" class="com.ibm.rio.log.remote.parsers.LogLineParser" />
+	
+	<bean id="clientConnectionModelParser" class="com.ibm.rio.log.remote.parsers.ClientConnectionModelParser">
+		<property name="logLineDAO" ref="logLineDAO" />
+		<property name="transitionDAO" ref="transitionDAO" />
+		<property name="viewDAO" ref="viewDAO" />
+	</bean>
+	
+		<!-- ENTITY MODEL BUILDERS -->
+		
+	<bean id="abstractPersistenceBuilder" class="com.ibm.rio.log.remote.builders.AbstractPersistenceBuilder" abstract="true">
+		<property name="logLineDAO" ref="logLineDAO" />
+		<property name="transitionDAO" ref="transitionDAO" />
+		<property name="viewDAO" ref="viewDAO" />
+	</bean>
+	
+	<bean id="shellViewBuilder" class="com.ibm.rio.log.remote.builders.view.ShellViewBuilder" parent="abstractPersistenceBuilder" />
+	<bean id="widgetViewBuilder" class="com.ibm.rio.log.remote.builders.view.WidgetViewBuilder" parent="abstractPersistenceBuilder" />
+	
+	<bean id="loadContextTransitionBuilder" class="com.ibm.rio.log.remote.builders.transition.LoadContextTransitionBuilder" parent="abstractPersistenceBuilder" />
+	<bean id="setViewTransitionBuilder" class="com.ibm.rio.log.remote.builders.transition.SetViewTransitionBuilder" parent="abstractPersistenceBuilder" />
+	
+	<bean id="commandPersistenceBuilder" class="com.ibm.rio.log.remote.builders.CommandPersistenceBuilder" parent="abstractPersistenceBuilder" />
+	<bean id="defaultPersistenceBuilder" class="com.ibm.rio.log.remote.builders.DefaultPersistenceBuilder" parent="abstractPersistenceBuilder" />
+	
+		<!-- DAOs -->
+		
+	<bean id="abstractDAO" abstract="true" class="com.ibm.rio.log.remote.dao.impls.AbstractDAO">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<bean id="logLineDAO" class="com.ibm.rio.log.remote.dao.impls.LogLineDAOImpl" parent="abstractDAO" />
+	<bean id="transitionDAO" class="com.ibm.rio.log.remote.dao.impls.TransitionDAOImpl" parent="abstractDAO" />
+	<bean id="viewDAO" class="com.ibm.rio.log.remote.dao.impls.ViewDAOImpl" parent="abstractDAO" />
+
+		<!-- JDBC DATA SOURCE -->
+
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="${jdbc.driverClassName}"/>
+        <property name="jdbcUrl" value="${jdbc.url}"/>
+        <property name="user" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+    
+		<!-- SPRING POST-PROCESSORS -->
+	
+	<bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+	<bean class="org.springframework.context.annotation.CommonAnnotationBeanPostProcessor" />
+	<bean class="org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor" />
+	
+	<bean id="propertyPlaceholder" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="location" value="application.properties" />
+		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
+	</bean>
+	
+	<!-- AOP -->
+	
+	<bean id="perfAOP" class="com.ibm.rio.log.remote.aop.PerfAspect" />
+	
+	<aop:config>
+		<aop:aspect ref="perfAOP">
+			<aop:pointcut id="perfPointcut" expression="execution(* com.ibm.rio.log.remote.dao.impls..*DAOImpl.*(..))" />
+			<aop:around pointcut-ref="perfPointcut" method="advice" />
+		</aop:aspect>
+	</aop:config>
+
+</beans>
